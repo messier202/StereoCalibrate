@@ -125,8 +125,16 @@ int main(int argc, char* argv[]) {
 	initFindCorner();
 	for(int i=0;i<10;++i)
 	  findCornersWork(i);
-	calibrateCamera(object_Points, left_image_points_buf, image_size, K1, D1, rotation_vectors, translation_vectors);
-	calibrateCamera(object_Points, right_image_points_buf, image_size, K2, D2, rotation_vectors, translation_vectors);
+	double err1 = calibrateCamera(object_Points, left_image_points_buf, image_size, K1, D1, rotation_vectors, translation_vectors, CALIB_ZERO_TANGENT_DIST);
+	double err2 = calibrateCamera(object_Points, right_image_points_buf, image_size, K2, D2, rotation_vectors, translation_vectors, CALIB_ZERO_TANGENT_DIST);
+	//cout << "monoculor calibration" << endl;
+	//cout << err1 << "   " << err2 << endl;
+	//cout << K1 << endl;
+	//cout << D1 << endl;
+	//cout << K2 << endl;
+	//cout << D2 << endl;
+
+
 	////Mat src= imread("l1.jpg");
 	////Mat dst;
 	////undistort(src, dst, K1, D1);
@@ -134,21 +142,26 @@ int main(int argc, char* argv[]) {
 	////imshow("Ð£ÕýÍ¼Ïñ",dst);
 
 	//
-	Rect * RoiL,* RoiR;
+	Rect RoiL,RoiR;
 	stereoCalibrate(object_Points, left_image_points_buf, right_image_points_buf, K1, D1, K2, D2, image_size, R, T, E, F, CALIB_FIX_INTRINSIC);
 
+	//cout << "monoculor calibration" << endl;
+	//cout << "K1:" << K1 << endl;
+	//cout << "D1:" << D1 << endl;
+	//cout << "K2:" << K2 << endl;
+	//cout << "D2:" << D2 << endl;
+	//cout << "R:" << R << endl;
+	//cout << "T:" << T << endl;
 
-	cout << K1 << endl;
-	cout << D1 << endl;
-	cout << K2 << endl;
-	cout << D2 << endl;
-	cout << R << endl;
-	cout << T << endl;
 
+	stereoRectify(K1, D1, K2, D2, image_size, R, T, R1, R2, P1, P2, Q, 0/*CALIB_ZERO_DISPARITY*/, 0, image_size,&RoiL,&RoiR);
 
-	stereoRectify(K1, D1, K2, D2, image_size, R, T, R1, R2, P1, P2, Q,1024,-1, image_size/*,RoiL,RoiR*/);
-	//cout << RoiL;
-	//cout << RoiR;
+	cout << "stereoRectify:" << endl;
+	P2.at<double>(0, 3) = 0;
+	//cout << "P1:" << P1 << endl;
+	//cout << "P2:" << P2 << endl;
+	//cout << "ROI:" << RoiL << endl;
+	//cout << "ROI:" << RoiR << endl;
 
 	//FileStorage fs1;
 	//fs1.open("CameraData.xml", FileStorage::WRITE);
@@ -168,6 +181,17 @@ int main(int argc, char* argv[]) {
 	//fs2.release();
 	img1 = imread("l7.jpg");
 	img2 = imread("r7.jpg");
+
+	//cout << "rectify:" << endl;
+	//cout << "K1:" << K1 << endl;
+	//cout << "D1:" << D1 << endl;
+	//cout << "R1:" << R1 << endl;
+	//cout << "P1:" << P1 << endl;
+	//cout << "K2:" << K2 << endl;
+	//cout << "D2:" << D2 << endl;
+	//cout << "R2:" << R2 << endl;
+	//cout << "P2:" << P2 << endl;
+
 	cv::initUndistortRectifyMap(K1, D1, R1, P1, image_size, CV_32F, lmapx, lmapy);
 	cv::initUndistortRectifyMap(K2, D2, R2, P2, image_size, CV_32F, rmapx, rmapy);
 	cv::remap(img1, imgU1, lmapx, lmapy, cv::INTER_LINEAR);
