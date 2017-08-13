@@ -4,6 +4,31 @@
 using namespace cv;
 using namespace std;
 
+void calDisparity(Rect leftROI, Rect rightROI, Mat _left, Mat _right, Mat & disparity)
+{
+	cvtColor(_left, _left, COLOR_BGR2GRAY);
+	cvtColor(_right, _right, COLOR_BGR2GRAY);
+	cv::Ptr<cv::StereoBM> bm = cv::StereoBM::create(16, 9);
+	bm->setPreFilterType(CV_STEREO_BM_XSOBEL); 
+	bm->setPreFilterSize(9);
+	bm->setPreFilterCap(31);
+	bm->setBlockSize(15);
+	bm->setMinDisparity(0);
+	bm->setNumDisparities(64);
+	bm->setTextureThreshold(10);
+	bm->setUniquenessRatio(10);
+	bm->setSpeckleWindowSize(100);
+	bm->setSpeckleRange(32);
+	bm->setROI1(leftROI);
+	bm->setROI2(rightROI);
+
+	copyMakeBorder(_left, _left, 0, 0, 80, 0, IPL_BORDER_REPLICATE); 
+	copyMakeBorder(_right, _right, 0, 0, 80, 0, IPL_BORDER_REPLICATE);
+	bm->compute(_left, _right, disparity);
+	//disparity = disparity.colRange(80, _left.cols);
+	disparity.convertTo(disparity, CV_32F, 1.0 / 16);
+}
+
 void mergeImg(cv::Mat &dst, cv::Mat &src1, cv::Mat &src2)
 {
 	int rows = src1.rows>src2.rows ? src1.rows : src2.rows;//合成图像的行数
@@ -65,7 +90,7 @@ void initFindCorner() {
 }
 
 Size image_size;
-void findCornersWork(int i) {
+int findCornersWork(int i) {
 	Mat lChess, rChess, comChess;
 	vector <Point2f>  per_image_points_buf;
 	//left
@@ -80,7 +105,10 @@ void findCornersWork(int i) {
 		CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
 	//printf("捕获角点数量:%d\n", nowNumber);
 	if (found == 0)
+	{
 		cout << "f:" << left_imgN[i] << endl;
+		return 0;
+	}
 	cornerSubPix(srcGrayL,  per_image_points_buf,  Size(11, 11),Size(-1, -1),
 		TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
 	drawChessboardCorners(srcColorL, boardSize, per_image_points_buf, found);
@@ -101,13 +129,17 @@ void findCornersWork(int i) {
 		CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
 	//printf("捕获角点数量:%d\n", nowNumber);
 	if (found == 0)
+	{
 		cout << "f:" << right_imgN[i] << endl;
+		return 0;
+	}
 	cornerSubPix(srcGrayR, per_image_points_buf, Size(11, 11), Size(-1, -1),
 		TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
 	drawChessboardCorners(srcColorR, boardSize, per_image_points_buf, found);
 	//imshow(right_imgN[i], srcColorR);
 	right_image_points_buf.push_back(per_image_points_buf);
 	per_image_points_buf.clear();
+	return 0;
 }
 
 Mat intrinsic_matrix;
@@ -179,8 +211,8 @@ int main(int argc, char* argv[]) {
 	//fs2["R2"] >> R2;
 	//fs2["P2"] >> P2;
 	//fs2.release();
-	img1 = imread("l7.jpg");
-	img2 = imread("r7.jpg");
+	img1 = imread("ltest.jpg");
+	img2 = imread("rtest.jpg");
 
 	//cout << "rectify:" << endl;
 	//cout << "K1:" << K1 << endl;
@@ -200,6 +232,10 @@ int main(int argc, char* argv[]) {
 	imshow("原图-右", img2);
 	imshow("校正-左", imgU1);
 	imshow("校正-右", imgU2);
+	Mat imgdis;
+	calDisparity(RoiL, RoiR, imgU1, imgU2, imgdis);
+	imshow("视差图", imgdis);
+
 	waitKey();
 
 	return 0;
